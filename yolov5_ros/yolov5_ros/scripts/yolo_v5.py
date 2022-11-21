@@ -6,7 +6,7 @@ import torch
 import rospy
 import numpy as np
 
-from std_msgs.msg import Header
+from std_msgs.msg import Header, String
 from sensor_msgs.msg import Image
 from yolov5_ros_msgs.msg import BoundingBox, BoundingBoxes
 
@@ -53,6 +53,9 @@ class Yolo_Dect:
         self.image_pub = rospy.Publisher(
             '/yolov5/detection_image',  Image, queue_size=1)
 
+        self.reading_pub = rospy.Publisher(
+            '/yolov5/display_reading_result',  String, queue_size=1)
+
         # if no image messages
         while (not self.getImageStatus) :
             rospy.loginfo("waiting for image.")
@@ -70,7 +73,14 @@ class Yolo_Dect:
         results = self.model(self.color_image)
         # xmin    ymin    xmax   ymax  confidence  class    name
 
-        boxs = results.pandas().xyxy[0].values
+        # sorted_boxes = results.sort_values(by='xmin')
+        # boxs = results.pandas().xyxy[0].values
+        boxs = results.pandas().xyxy[0].sort_values(by='xmin').values
+        # print('boxs')
+        # print(boxs)
+        # print('results.pandas().xyxy[0]')
+        # print(results.pandas().xyxy[0].sort_values(by='xmin').values)
+        
         self.dectshow(self.color_image, boxs, image.height, image.width)
 
         cv2.waitKey(3)
@@ -92,6 +102,7 @@ class Yolo_Dect:
             boundingBox.num = np.int16(count)
             boundingBox.Class = box[-1]
 
+
             if box[-1] in self.classes_colors.keys():
                 color = self.classes_colors[box[-1]]
             else:
@@ -112,6 +123,20 @@ class Yolo_Dect:
 
             self.boundingBoxes.bounding_boxes.append(boundingBox)
             self.position_pub.publish(self.boundingBoxes)
+
+        display_result = []
+
+        for i in range(len(self.boundingBoxes.bounding_boxes)):
+            display_result.append(int(self.boundingBoxes.bounding_boxes[i].Class))
+
+        display_result.insert(-3, ',')
+
+        display_result_string = ''.join(str(e) for e in display_result)
+
+        print('Result string')
+        print(display_result_string)
+        self.reading_pub.publish(display_result_string)
+
         self.publish_image(img, height, width)
         cv2.imshow('YOLOv5', img)
 
