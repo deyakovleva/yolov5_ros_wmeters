@@ -9,9 +9,13 @@ import numpy as np
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import Image
 from yolov5_ros_msgs.msg import BoundingBox, BoundingBoxes
+from yolov5_ros_msgs.srv import meter_response, meter_responseResponse
 
 
 class Yolo_Dect:
+
+    Flag_for_reading = False
+
     def __init__(self):
 
         # load parameters
@@ -56,10 +60,16 @@ class Yolo_Dect:
         self.reading_pub = rospy.Publisher(
             '/yolov5/display_reading_result',  String, queue_size=1)
 
+        responce_service = rospy.Service('/response', meter_response, self.response_srv)
+
         # if no image messages
         while (not self.getImageStatus) :
             rospy.loginfo("waiting for image.")
             rospy.sleep(2)
+
+    def response_srv(self,request):
+        self.Flag_for_reading = True
+        return meter_responseResponse(success = True)
 
     def image_callback(self, image):
         self.boundingBoxes = BoundingBoxes()
@@ -73,26 +83,24 @@ class Yolo_Dect:
         results = self.model(self.color_image)
         # xmin    ymin    xmax   ymax  confidence  class    name
 
-        # sorted_boxes = results.sort_values(by='xmin')
         # boxs = results.pandas().xyxy[0].values
-        boxs = results.pandas().xyxy[0].sort_values(by='xmin').values
-        # print('boxs')
-        # print(boxs)
-        # print('results.pandas().xyxy[0]')
-        # print(results.pandas().xyxy[0].sort_values(by='xmin').values)
+
+
+        boxs_digits = results.pandas().xyxy[0].sort_values(by='xmin').values
+
         
-        self.dectshow(self.color_image, boxs, image.height, image.width)
+        self.dectshow(self.color_image, boxs_digits, image.height, image.width)
 
         cv2.waitKey(3)
 
-    def dectshow(self, org_img, boxs, height, width):
+    def dectshow(self, org_img, boxs_digits, height, width):
         img = org_img.copy()
 
         count = 0
-        for i in boxs:
+        for i in boxs_digits:
             count += 1
 
-        for box in boxs:
+        for box in boxs_digits:
             boundingBox = BoundingBox()
             boundingBox.probability =np.float64(box[4])
             boundingBox.xmin = np.int64(box[0])
@@ -124,21 +132,35 @@ class Yolo_Dect:
             self.boundingBoxes.bounding_boxes.append(boundingBox)
             self.position_pub.publish(self.boundingBoxes)
 
-        display_result = []
+        # if (len(self.boundingBoxes.bounding_boxes) != 0):
+        #     if ((self.boundingBoxes.bounding_boxes[0].num == 1)&(self.boundingBoxes.bounding_boxes[0].Class == 'water counter')):
+        #         print('find water counter')
+        #     else:
+        #         print('bad counter')
 
-        for i in range(len(self.boundingBoxes.bounding_boxes)):
-            display_result.append(int(self.boundingBoxes.bounding_boxes[i].Class))
+        # else:
+        #     print('no detections')
 
-        display_result.insert(-3, ',')
+        ############################################################################
+        ########### for digits detection ###########################################
 
-        display_result_string = ''.join(str(e) for e in display_result)
+        if self.Flag_for_reading:
+            display_result = []
 
-        print('Result string')
-        print(display_result_string)
-        self.reading_pub.publish(display_result_string)
+            for i in range(len(self.boundingBoxes.bounding_boxes)):
+                display_result.append(int(self.boundingBoxes.bounding_boxes[i].Class))
+
+            display_result.insert(-3, ',')
+
+            display_result_string = ''.join(str(e) for e in display_result)
+
+            print('Result string')
+            print(display_result_string)
+            self.reading_pub.publish(display_result_string)
+            self.Flag_for_reading = False
+        ############################################################################
 
         self.publish_image(img, height, width)
-        cv2.imshow('YOLOv5', img)
 
     def publish_image(self, imgdata, height, width):
         image_temp = Image()

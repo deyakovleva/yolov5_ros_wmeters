@@ -14,6 +14,11 @@ add_message_files(
         BoundingBoxes.msg
 )
 
+add_service_files(
+ FILES
+ meter_response.srv
+)
+
 generate_messages(
         DEPENDENCIES
         std_msgs
