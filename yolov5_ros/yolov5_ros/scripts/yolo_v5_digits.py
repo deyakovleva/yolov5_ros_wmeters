@@ -95,7 +95,7 @@ class Yolo_Dect:
 
     def dectshow(self, org_img, boxs_digits, height, width):        
                 
-        img = org_img.copy()        
+        img = org_img.copy()     
 
         count = 0
         for i in boxs_digits:
@@ -131,6 +131,8 @@ class Yolo_Dect:
 
             self.boundingBoxes.bounding_boxes.append(boundingBox)
             self.position_pub.publish(self.boundingBoxes)
+        cv2.imshow('result', img)
+        cv2.waitKey(0)
 
         ############################################################################
         ########### for digits detection ###########################################
@@ -152,7 +154,7 @@ class Yolo_Dect:
         ############################################################################
 
         # self.publish_image(img, height, width)
-        cv2.imshow('YOLOv5', org_img)
+        # cv2.imshow('YOLOv5', img)
 
     # def publish_image(self, imgdata, height, width):
     #     image_temp = Image()
