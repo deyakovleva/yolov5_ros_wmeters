@@ -3,6 +3,7 @@ project(yolov5_ros_msgs)
 
 
 find_package(catkin REQUIRED COMPONENTS
+  rospy
   std_msgs
   message_generation
 )
@@ -17,6 +18,7 @@ add_message_files(
 add_service_files(
  FILES
  meter_response.srv
+ meter_response_crop.srv
 )
 
 generate_messages(
