@@ -58,7 +58,7 @@ class Yolo_Dect:
 
         self.reading_pub = rospy.Publisher('/yolov5/display_reading_result',  String, queue_size=1)
 
-        responce_service = rospy.Service('/response', meter_response, self.response_srv)
+        responce_service = rospy.Service('/response_digits', meter_response, self.response_srv)
 
         img = cv2.imread('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/meter_cropped.jpg')
         self.image_callback(img)
