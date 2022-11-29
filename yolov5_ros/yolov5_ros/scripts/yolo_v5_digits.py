@@ -5,7 +5,6 @@ import cv2
 import torch
 import rospy
 import numpy as np
-
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import Image
 from yolov5_ros_msgs.msg import BoundingBox, BoundingBoxes
@@ -40,33 +39,27 @@ class Yolo_Dect:
             self.model.cuda()
 
         self.model.conf = conf
-        # self.color_image = Image()
-        # self.depth_image = Image()
-        # self.getImageStatus = False
 
         # Load class color
-        self.classes_colors = {}
-
-        # image subscribe
-        # self.color_sub = rospy.Subscriber(image_topic, Image, self.image_callback,
-        #                                   queue_size=1, buff_size=52428800)        
+        self.classes_colors = {}    
 
         # output publishers
         self.position_pub = rospy.Publisher(pub_topic,  BoundingBoxes, queue_size=1)
 
-        self.image_pub = rospy.Publisher('/yolov5/detection_image',  Image, queue_size=1)
+        # self.image_pub = rospy.Publisher('/yolov5/detection_image',  Image, queue_size=1)
 
         self.reading_pub = rospy.Publisher('/yolov5/display_reading_result',  String, queue_size=1)
 
         responce_service = rospy.Service('/response_digits', meter_response, self.response_srv)
 
-        img = cv2.imread('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/meter_cropped.jpg')
-        self.image_callback(img)
+        # img = cv2.imread('/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/media/meter_cropped.jpg')
+        img = cv2.imread('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/media/meter_cropped.jpg')
+        # if no image
+        if img is None:
+            print('No image')
 
-        # if no image messages
-        # while (not self.getImageStatus) :
-        #     rospy.loginfo("waiting for image.")
-        #     rospy.sleep(2)
+        self.image_callback(img)        
+
 
     def response_srv(self,request):
         self.flag_for_reading = True
@@ -79,7 +72,6 @@ class Yolo_Dect:
         self.boundingBoxes = BoundingBoxes()
         self.boundingBoxes.header = 'image.header'
         self.boundingBoxes.image_header = "image.header"
-        # self.getImageStatus = True
         self.color_image = np.frombuffer(image, dtype=np.uint8).reshape(
             height, width, -1)
         self.color_image = cv2.cvtColor(self.color_image, cv2.COLOR_BGR2RGB)
@@ -91,11 +83,7 @@ class Yolo_Dect:
         
         self.dectshow(self.color_image, boxs_digits, height, width)
 
-        cv2.waitKey(3)
-
-    def dectshow(self, org_img, boxs_digits, height, width):        
-                
-        img = org_img.copy()     
+    def dectshow(self, org_img, boxs_digits, height, width):          
 
         count = 0
         for i in boxs_digits:
@@ -117,7 +105,7 @@ class Yolo_Dect:
                 color = np.random.randint(0, 183, 3)
                 self.classes_colors[box[-1]] = color
 
-            cv2.rectangle(img, (int(box[0]), int(box[1])),
+            cv2.rectangle(org_img, (int(box[0]), int(box[1])),
                           (int(box[2]), int(box[3])), (int(color[0]),int(color[1]), int(color[2])), 2)
 
             if box[1] < 20:
@@ -125,16 +113,14 @@ class Yolo_Dect:
             else:
                 text_pos_y = box[1] - 10
                 
-            cv2.putText(img, box[-1],
+            cv2.putText(org_img, box[-1],
                         (int(box[0]), int(text_pos_y)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-
 
             self.boundingBoxes.bounding_boxes.append(boundingBox)
             self.position_pub.publish(self.boundingBoxes)
-        cv2.imshow('result', img)
-        cv2.waitKey(0)
+        # cv2.imshow('result', img)
+        # cv2.waitKey(0)
 
-        ############################################################################
         ########### for digits detection ###########################################
 
         if self.flag_for_reading:

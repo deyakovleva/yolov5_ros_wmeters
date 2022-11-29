@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import cv2
 import torch
 import rospy
 import numpy as np
-
+import ros_numpy
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import Image
 from yolov5_ros_msgs.msg import BoundingBox, BoundingBoxes
@@ -15,17 +15,18 @@ from yolov5_ros_msgs.srv import meter_response_crop, meter_response_cropResponse
 class Yolo_Dect:
 
     flag_for_cropping = False
+    im_rate = 0
 
     def __init__(self):
 
         # load parameters
-        yolov5_path = rospy.get_param('/yolov5_path', '')
+        yolov5_path = rospy.get_param('/yolov5_path', '/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/yolov5')
 
-        weight_path = rospy.get_param('~weight_path', '')
+        weight_path = rospy.get_param('~weight_path', '/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/weights/meters_weights.pt')
         image_topic = rospy.get_param(
             '~image_topic', '/camera/color/image_raw')
         pub_topic = rospy.get_param('~pub_topic', '/yolov5/BoundingBoxes')
-        self.camera_frame = rospy.get_param('~camera_frame', '')
+        self.camera_frame = rospy.get_param('~camera_frame', 'camera_color_frame')
         conf = rospy.get_param('~conf', '0.5')
 
         # load local repository(YoloV5:v6.0)
@@ -48,7 +49,7 @@ class Yolo_Dect:
 
         # image subscribe
         self.color_sub = rospy.Subscriber(image_topic, Image, self.image_callback,
-                                          queue_size=1, buff_size=52428800)
+                                          queue_size=1)
 
         # output publishers
         self.position_pub = rospy.Publisher(
@@ -61,7 +62,7 @@ class Yolo_Dect:
 
         # if no image messages
         while (not self.getImageStatus) :
-            rospy.loginfo("waiting for image.")
+            rospy.loginfo("Waiting for image.")
             rospy.sleep(2)
 
     def response_srv(self,request):
@@ -69,25 +70,23 @@ class Yolo_Dect:
         return meter_response_cropResponse(success = True)
 
     def image_callback(self, image):
-        self.boundingBoxes = BoundingBoxes()
-        self.boundingBoxes.header = image.header
-        self.boundingBoxes.image_header = image.header
-        self.getImageStatus = True
-        self.color_image = np.frombuffer(image.data, dtype=np.uint8).reshape(
-            image.height, image.width, -1)
-        self.color_image = cv2.cvtColor(self.color_image, cv2.COLOR_BGR2RGB)
 
-        results = self.model(self.color_image)
-        # xmin    ymin    xmax   ymax  confidence  class    name
+        if abs((self.im_rate - image.header.seq))>=30:
 
-        boxs = results.pandas().xyxy[0].sort_values(by='confidence').values
-       
-        self.dectshow(self.color_image, boxs, image.height, image.width)
+            self.getImageStatus = True
+            #self.color_image = np.frombuffer(image.data, dtype=np.uint8).reshape(image.height, image.width, -1)
+            self.color_image = ros_numpy.numpify(image)
+            self.color_image = cv2.cvtColor(self.color_image, cv2.COLOR_BGR2RGB)
 
-        cv2.waitKey(3)
+            results = self.model(self.color_image)
+            # xmin    ymin    xmax   ymax  confidence  class    name
+
+            boxs = results.pandas().xyxy[0].sort_values(by='confidence').values
+        
+            self.dectshow(self.color_image, boxs, image.height, image.width)
+            self.im_rate = image.header.seq
 
     def dectshow(self, org_img, boxs, height, width):
-        img = org_img.copy()
 
         count = 0
         for i in boxs:
@@ -109,7 +108,7 @@ class Yolo_Dect:
                 color = np.random.randint(0, 183, 3)
                 self.classes_colors[box[-1]] = color
 
-            cv2.rectangle(img, (int(box[0]), int(box[1])),
+            cv2.rectangle(org_img, (int(box[0]), int(box[1])),
                           (int(box[2]), int(box[3])), (int(color[0]),int(color[1]), int(color[2])), 1)
 
             if box[1] < 20:
@@ -117,66 +116,39 @@ class Yolo_Dect:
             else:
                 text_pos_y = box[1] - 10
                 
-            cv2.putText(img, box[-1],
+            cv2.putText(org_img, box[-1],
                         (int(box[0]), int(text_pos_y)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
-            cv2.putText(img, str(np.round(box[4], 2)),
+            cv2.putText(org_img, str(np.round(box[4], 2)),
                         (int(box[0]), int(text_pos_y)+10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
             
-            self.boundingBoxes.bounding_boxes.append(boundingBox)
-            self.position_pub.publish(self.boundingBoxes)
 
         if self.flag_for_cropping:
-            cropped_img = img[boundingBox.ymin:boundingBox.ymax, boundingBox.xmin:boundingBox.xmax]
-            cv2.imwrite('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/meter_cropped.jpg',cropped_img)
+            cropped_img = org_img[boundingBox.ymin:boundingBox.ymax, boundingBox.xmin:boundingBox.xmax]
+            # cv2.imwrite('/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
+            cv2.imwrite('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
             self.flag_for_cropping = False
 
-        # if (len(self.boundingBoxes.bounding_boxes) != 0):
-        #     if ((self.boundingBoxes.bounding_boxes[0].num == 1)&(self.boundingBoxes.bounding_boxes[0].Class == 'water counter')):
-        #         print('Water meter is detected')
-        #     else:
-        #         print('bad counter')
+        if (count != 0):
+            rospy.loginfo("Water meter is detected")
 
-        # else:
-        #     print('no detections')
-
-        ############################################################################
-        ########### for digits detection ###########################################
-
-        # if self.flag_for_reading:
-        #     display_result = []
-
-        #     for i in range(len(self.boundingBoxes.bounding_boxes)):
-        #         display_result.append(int(self.boundingBoxes.bounding_boxes[i].Class))
-
-        #     display_result.insert(-3, ',')
-
-        #     self.display_result_string.data = ''.join(str(e) for e in display_result)
-
-        #     print('Result string')
-        #     print(self.display_result_string.data)
-        #     self.reading_pub.publish(self.display_result_string)
-        #     self.flag_for_reading = False
-        ############################################################################
-
-        self.publish_image(img, height, width)
+        self.publish_image(org_img, height, width)
 
     def publish_image(self, imgdata, height, width):
-        image_temp = Image()
+        #image_temp = Image()
+        image_temp = ros_numpy.msgify(Image, imgdata, encoding='bgr8')
         header = Header(stamp=rospy.Time.now())
         header.frame_id = self.camera_frame
-        image_temp.height = height
-        image_temp.width = width
-        image_temp.encoding = 'bgr8'
-        image_temp.data = np.array(imgdata).tobytes()
         image_temp.header = header
-        image_temp.step = width * 3
         self.image_pub.publish(image_temp)
 
 
 def main():
     rospy.init_node('yolov5_ros', anonymous=True)
     yolo_dect = Yolo_Dect()
-    rospy.spin()
+    #rospy.spin()
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        rate.sleep()
 
 
 if __name__ == "__main__":
