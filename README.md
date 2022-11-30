@@ -93,4 +93,11 @@ Modify the parameters in the [launch file](https://github.com/deyakovleva/yolov5
     Confidence threshold for detected objects.
     
 
+### Weights
+digits_weights_19.pt detects well digits in white background and not so good in dark background
 
+digits_weights_34.pt detects digits better in dark background but worse in white background
+
+meters_weights.pt detects only water meters and FN: faces
+
+meters_electric_gauges.pt detects meters, gauges and sometimes electric meters, no lots of FN
