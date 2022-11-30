@@ -44,8 +44,14 @@ catkin build
 source devel/setup.bash
 ```
 
+
 ## Basic Usage
 
+Before start, change:
+
+- path in [line 143](https://github.com/deyakovleva/yolov5_ros_wmeters/blob/master/yolov5_ros/yolov5_ros/scripts/yolo_v5_meters.py#L143)
+- if you use digits detection change path in [line 56](https://github.com/deyakovleva/yolov5_ros_wmeters/blob/master/yolov5_ros/yolov5_ros/scripts/yolo_v5_meters.py#L56)
+- also see node parameters
 1. Start water meter detecting node
 
 ```
