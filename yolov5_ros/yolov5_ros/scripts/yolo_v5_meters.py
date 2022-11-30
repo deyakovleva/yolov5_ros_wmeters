@@ -3,6 +3,12 @@
 
 import cv2
 import torch
+
+# gpu = torch.device('cuda')
+# print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+# print(torch.cuda.list_gpu_processes())
+# torch.cuda.set_per_process_memory_fraction(0.1, 0)
+# print(torch.cuda.list_gpu_processes())
 import rospy
 import numpy as np
 import ros_numpy
@@ -15,6 +21,7 @@ from yolov5_ros_msgs.srv import meter_response_crop, meter_response_cropResponse
 class Yolo_Dect:
 
     flag_for_cropping = False
+    # flag_for_saving = False
     im_rate = 0
 
     def __init__(self):
@@ -28,6 +35,8 @@ class Yolo_Dect:
         pub_topic = rospy.get_param('~pub_topic', '/yolov5/BoundingBoxes')
         self.camera_frame = rospy.get_param('~camera_frame', 'camera_color_frame')
         conf = rospy.get_param('~conf', '0.5')
+
+        # torch.cuda.set_per_process_memory_fraction(0.5, 0)
 
         # load local repository(YoloV5:v6.0)
         self.model = torch.hub.load(yolov5_path, 'custom',
@@ -69,9 +78,12 @@ class Yolo_Dect:
         self.flag_for_cropping = True
         return meter_response_cropResponse(success = True)
 
+
+
     def image_callback(self, image):
 
-        if abs((self.im_rate - image.header.seq))>=30:
+        # tune rate
+        if abs((self.im_rate - image.header.seq))>=1:
 
             self.getImageStatus = True
             #self.color_image = np.frombuffer(image.data, dtype=np.uint8).reshape(image.height, image.width, -1)
@@ -101,6 +113,8 @@ class Yolo_Dect:
             boundingBox.ymax = np.int64(box[3])
             boundingBox.num = np.int16(count)
             boundingBox.Class = box[-1]
+            if boundingBox.Class == 'water counter':
+                boundingBox.Class = 'counter'
             
             if box[-1] in self.classes_colors.keys():
                 color = self.classes_colors[box[-1]]
@@ -116,20 +130,23 @@ class Yolo_Dect:
             else:
                 text_pos_y = box[1] - 10
                 
-            cv2.putText(org_img, box[-1],
-                        (int(box[0]), int(text_pos_y)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(org_img, boundingBox.Class,
+                        (int(box[0]), int(text_pos_y)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.putText(org_img, str(np.round(box[4], 2)),
                         (int(box[0]), int(text_pos_y)+10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
             
 
         if self.flag_for_cropping:
-            cropped_img = org_img[boundingBox.ymin:boundingBox.ymax, boundingBox.xmin:boundingBox.xmax]
-            # cv2.imwrite('/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
-            cv2.imwrite('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
-            self.flag_for_cropping = False
+            if boundingBox.Class == 'counter':
+                cropped_img = org_img[boundingBox.ymin:boundingBox.ymax, boundingBox.xmin:boundingBox.xmax]
+                # cv2.imwrite('/home/itmo/yolov5_ws/src/yolov5_ros_wmeters/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
+                cv2.imwrite('/home/diana/yolov5_ros_ws/src/Yolov5_ros/yolov5_ros/yolov5_ros/media/meter_cropped.jpg',cropped_img)
+                self.flag_for_cropping = False
+            # else:
+            #     rospy.loginfo('No counter detected')
 
         if (count != 0):
-            rospy.loginfo("Water meter is detected")
+            rospy.loginfo("Sensor is detected")
 
         self.publish_image(org_img, height, width)
 

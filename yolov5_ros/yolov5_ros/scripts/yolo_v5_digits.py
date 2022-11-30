@@ -26,7 +26,7 @@ class Yolo_Dect:
         #     '~image_topic', '/camera/color/image_raw')
         pub_topic = rospy.get_param('~pub_topic', '/yolov5/BoundingBoxes')
         # self.camera_frame = rospy.get_param('~camera_frame', '')
-        conf = rospy.get_param('~conf', '0.6')
+        conf = rospy.get_param('~conf', '0.5')
 
         # load local repository(YoloV5:v6.0)
         self.model = torch.hub.load(yolov5_path, 'custom',
@@ -118,7 +118,7 @@ class Yolo_Dect:
 
             self.boundingBoxes.bounding_boxes.append(boundingBox)
             self.position_pub.publish(self.boundingBoxes)
-        # cv2.imshow('result', img)
+        # cv2.imshow('result', org_img)
         # cv2.waitKey(0)
 
         ########### for digits detection ###########################################
@@ -132,7 +132,7 @@ class Yolo_Dect:
             if len(self.boundingBoxes.bounding_boxes) > 8:
                 print('Too many digits found')
 
-            display_result.insert(-3, ',')
+            # display_result.insert(-3, ',')
 
             self.display_result_string.data = ''.join(str(e) for e in display_result)
 
