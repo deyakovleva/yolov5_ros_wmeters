@@ -100,7 +100,9 @@ Modify the parameters in the [launch file](https://github.com/deyakovleva/yolov5
 ### Weights
 digits_weights_19.pt detects well digits in white background and not so good in dark background
 
-digits_weights_34.pt detects digits better in dark background but worse in white background
+digits_weights_34.pt detects badly
+
+digits_weights_35.pt detects in small distances
 
 meters_weights.pt detects only water meters and FN: faces
 
