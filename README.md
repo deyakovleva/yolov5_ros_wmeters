@@ -106,4 +106,6 @@ digits_weights_35.pt detects in small distances
 
 meters_weights.pt detects only water meters and FN: faces
 
-meters_electric_gauges.pt detects meters, gauges and sometimes electric meters, no lots of FN
+meters_gauges.pt detects water meters and gaudes, but detects electric counter as gauge
+
+meters_electric_gauges.pt detects meters, gauges and sometimes electric meters as counter, no lots of FN
