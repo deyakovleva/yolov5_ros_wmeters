@@ -52,6 +52,10 @@ Before start, change:
 - path in [line 143](https://github.com/deyakovleva/yolov5_ros_wmeters/blob/master/yolov5_ros/yolov5_ros/scripts/yolo_v5_meters.py#L143)
 - if you use digits detection change path in [line 56](https://github.com/deyakovleva/yolov5_ros_wmeters/blob/master/yolov5_ros/yolov5_ros/scripts/yolo_v5_digits.py#L56)
 - also see node parameters
+- tune detection frequency in [line 89](https://github.com/deyakovleva/yolov5_ros_wmeters/blob/master/yolov5_ros/yolov5_ros/scripts/yolo_v5_meters.py#L89) (default 1 fps)
+- 
+
+
 1. Start water meter detecting node
 
 ```
@@ -90,7 +94,7 @@ Modify the parameters in the [launch file](https://github.com/deyakovleva/yolov5
     
 * **`confidence`** 
 
-    Confidence threshold for detected objects.
+    Confidence threshold for detected objects. Make "0.9" to avoid FP.
     
 
 ### Weights
